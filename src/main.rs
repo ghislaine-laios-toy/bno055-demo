@@ -1,13 +1,13 @@
 use std::time::Duration;
 
 use embedded_hal::delay::DelayNs;
-use embedded_hal::i2c::{I2c, SevenBitAddress};
-use esp_idf_svc::hal::delay::{Delay, FreeRtos};
+
+use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::hal::gpio::PinDriver;
 use esp_idf_svc::hal::i2c::{I2cConfig, I2cDriver};
-use esp_idf_svc::hal::peripheral::Peripheral;
 use esp_idf_svc::hal::peripherals::Peripherals;
 use esp_idf_svc::hal::prelude::FromValueType;
+use esp_idf_svc::sys::{i2c_get_timeout, i2c_set_timeout};
 use esp_idf_svc::timer::EspTaskTimerService;
 
 fn main() {
@@ -28,12 +28,31 @@ fn main() {
         let reset_pin = peripherals.pins.gpio19;
 
         let i2c = {
-            let baudrate = 20u32.kHz();
+            let baudrate = 100u32.kHz();
             let config = I2cConfig::new().baudrate(baudrate.into());
 
-            I2cDriver::new(peripherals.i2c0, sda, scl, &config).unwrap()
+            let i2c = I2cDriver::new(peripherals.i2c0, sda, scl, &config).unwrap();
+
+            #[allow(unused_labels)]
+            'set_i2c_timeout: {
+                let i2c_port = i2c.port();
+
+                let mut timeout: std::os::raw::c_int = 0;
+
+                unsafe { i2c_get_timeout(i2c_port, &mut timeout) };
+
+                log::info!("Current i2c timeout: {}", timeout);
+
+                timeout = 200_000;
+
+                unsafe { i2c_set_timeout(i2c_port, timeout) };
+
+                log::info!("Current i2c timeout is set to: {}", timeout);
+            }
+
+            i2c
         };
-        
+
         #[allow(unused_labels)]
         'reset_imu: {
             let mut reset_pin = PinDriver::output(reset_pin).unwrap();
