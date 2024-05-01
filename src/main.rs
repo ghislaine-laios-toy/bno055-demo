@@ -80,7 +80,7 @@ fn main() {
         let timer_service = EspTaskTimerService::new().unwrap();
 
         timer_service.timer(move || {
-            let quat = imu.euler_angles().unwrap();
+            let quat = imu.quaternion().unwrap();
 
             log::info!("{:?}", quat);
         })
